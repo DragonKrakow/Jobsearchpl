@@ -3,3 +3,4 @@ beautifulsoup4
 flask
 flask-cors
 python-dotenv
+gunicorn
