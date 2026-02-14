@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Job Search PL - Find Your Job</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        .subtitle {
+            color: #666;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .search-form {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+        
+        input[type="text"] {
+            flex: 1;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        button {
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .results {
+            margin-top: 20px;
+        }
+        
+        .job-item {
+            background: #f5f5f5;
+            padding: 15px;
+            border-left: 4px solid #667eea;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+        
+        .job-item:hover {
+            background: #efefef;
+        }
+        
+        .job-item a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: bold;
+            word-break: break-all;
+        }
+        
+        .job-item a:hover {
+            text-decoration: underline;
+        }
+        
+        .no-results {
+            color: #999;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .info-section {
+            background: #f0f4ff;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 30px;
+            font-size: 14px;
+            color: #555;
+            line-height: 1.6;
+        }
+        
+        .info-section h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Job Search PL</h1>
+        <p class="subtitle">Find job opportunities in Poland</p>
+        
+        <div class="search-form">
+            <input 
+                type="text" 
+                id="keywordInput" 
+                placeholder="Enter keywords (e.g., Python, JavaScript, Data Science...)"
+                autocomplete="off"
+            >
+            <button onclick="searchJobs()">Search</button>
+        </div>
+        
+        <div id="results" class="results"></div>
+        
+        <div class="info-section">
+            <h3>ℹ️ How to use:</h3>
+            <ol style="margin-left: 20px;">
+                <li>Enter job keywords in the search box</li>
+                <li>Click "Search" to find related job listings</li>
+                <li>Click on any job link to view details</li>
+            </ol>
+        </div>
+    </div>
+    
+    <script>
+        // Example job listings data
+        const jobListings = {
+            python: [
+                { title: 'Python Developer', url: 'https://www.olx.pl/d/search/?q=python+developer' },
+                { title: 'Python Backend Engineer', url: 'https://www.pracuj.pl/praca?keywords=python' }
+            ],
+            javascript: [
+                { title: 'JavaScript Developer', url: 'https://www.olx.pl/d/search/?q=javascript+developer' },
+                { title: 'Frontend Developer', url: 'https://www.pracuj.pl/praca?keywords=javascript' }
+            ],
+            java: [
+                { title: 'Java Developer', url: 'https://www.olx.pl/d/search/?q=java+developer' },
+                { title: 'Java Engineer', url: 'https://www.pracuj.pl/praca?keywords=java' }
+            ],
+            'data science': [
+                { title: 'Data Scientist', url: 'https://www.olx.pl/d/search/?q=data+scientist' },
+                { title: 'Machine Learning Engineer', url: 'https://www.pracuj.pl/praca?keywords=data+science' }
+            ],
+            marketing: [
+                { title: 'Marketing Manager', url: 'https://www.olx.pl/d/search/?q=marketing' },
+                { title: 'Digital Marketing Specialist', url: 'https://www.pracuj.pl/praca?keywords=marketing' }
+            ],
+            design: [
+                { title: 'UX/UI Designer', url: 'https://www.olx.pl/d/search/?q=designer' },
+                { title: 'Graphic Designer', url: 'https://www.pracuj.pl/praca?keywords=design' }
+            ]
+        };
+        
+        function searchJobs() {
+            const keyword = document.getElementById('keywordInput').value.toLowerCase().trim();
+            const resultsDiv = document.getElementById('results');
+            
+            if (!keyword) {
+                resultsDiv.innerHTML = '<p class="no-results">Please enter a keyword to search</p>';
+                return;
+            }
+            
+            // Search for matching jobs
+            let matchingJobs = [];
+            for (const [key, jobs] of Object.entries(jobListings)) {
+                if (key.includes(keyword) || keyword.includes(key)) {
+                    matchingJobs = jobs;
+                    break;
+                }
+            }
+            
+            if (matchingJobs.length === 0) {
+                resultsDiv.innerHTML = `<p class="no-results">No jobs found for "${keyword}"</p>`;
+                return;
+            }
+            
+            resultsDiv.innerHTML = matchingJobs.map(job => `
+                <div class="job-item">
+                    <a href="${job.url}" target="_blank">${job.title}</a>
+                </div>
+            `).join('');\n        }\n    </script>\n</body>\n</html>\n```\n\n4. Save the file.\n\nLet me know if you encounter any issues!
