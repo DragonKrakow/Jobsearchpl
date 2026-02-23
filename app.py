@@ -4,7 +4,7 @@ from scraper import JobScraper
 import os
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=False)
 scraper = JobScraper()
 
 @app.route('/', methods=['GET'])
@@ -30,7 +30,7 @@ def search():
 
 @app.route('/api/health', methods=['GET'])
 def health():
-    return jsonify({'status': 'ok'})
+    return jsonify({'status': 'ok', 'service': 'job-search-api'})
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))

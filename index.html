@@ -213,10 +213,19 @@
             
             // Show loading
             resultsDiv.innerHTML = '<p class="loading">⏳ Searching for jobs...</p>';
+
+            // Set a 30-second timeout using AbortController
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 30000);
             
             // Call API
-            fetch(`${API_URL}/api/search?keyword=${encodeURIComponent(keyword)}`)
-                .then(response => response.json())
+            fetch(`${API_URL}/api/search?keyword=${encodeURIComponent(keyword)}`, { signal: controller.signal })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('HTTP error ' + response.status);
+                    }
+                    return response.json();
+                })
                 .then(data => {
                     if (data.error) {
                         resultsDiv.innerHTML = `<p class="error">Error: ${data.error}</p>`;
@@ -280,8 +289,19 @@
                     resultsDiv.innerHTML = html;
                 })
                 .catch(error => {
-                    resultsDiv.innerHTML = `<p class="error">Error connecting to API: ${error.message}</p>`;
+                    let message;
+                    if (error.name === 'AbortError') {
+                        message = 'Request timed out. The API server may be starting up — please try again in a moment.';
+                    } else if (error.message === 'Failed to fetch') {
+                        message = 'Could not reach the API server. This may be a network issue or the server is unavailable. Please try again later.';
+                    } else {
+                        message = `Error connecting to API: ${error.message}`;
+                    }
+                    resultsDiv.innerHTML = `<p class="error">${message}</p>`;
                     console.error('API Error:', error);
+                })
+                .finally(() => {
+                    clearTimeout(timeoutId);
                 });
         }
         
