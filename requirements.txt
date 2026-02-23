@@ -1,6 +1,9 @@
 requests
 beautifulsoup4
+lxml
 flask
 flask-cors
 python-dotenv
 gunicorn
+selenium
+webdriver-manager
