@@ -247,21 +247,6 @@
                         html += '</div>';
                     }
                     
-                    // OLX.pl results
-                    if (data.olx_pl && data.olx_pl.length > 0) {
-                        html += '<div class="source-section">';
-                        html += '<div class="source-title">🛒 OLX.pl</div>';
-                        data.olx_pl.forEach(job => {
-                            html += `
-                                <div class="job-item">
-                                    <a href="${job.url}" target="_blank">${job.title}</a>
-                                    <div class="job-source">From: ${job.source}</div>
-                                </div>
-                            `;
-                        });
-                        html += '</div>';
-                    }
-                    
                     // LinkedIn results
                     if (data.linkedin && data.linkedin.length > 0) {
                         html += '<div class="source-section">';
