@@ -78,18 +78,20 @@ class JobScraper:
 
             soup = BeautifulSoup(page_source, 'lxml')
 
-            # Updated selectors for current pracuj.pl structure
+            # Try multiple selectors for current pracuj.pl structure
             job_items = (
                 soup.find_all('div', {'data-test': 'default-offer'})
                 or soup.find_all('article', {'data-test': True})
-                or soup.find_all('div', class_=re.compile(r'offer', re.I))
+                or soup.find_all('div', attrs={'data-test': re.compile(r'offer', re.I)})
+                or soup.find_all('li', attrs={'data-test': re.compile(r'offer', re.I)})
+                or soup.find_all('div', class_=re.compile(r'offer[-_]card|job[-_]offer', re.I))
             )
 
             for item in job_items[:10]:
                 try:
                     title_el = (
-                        item.find(['h2', 'h3'], {'data-test': True})
-                        or item.find('h2')
+                        item.find(['h2', 'h3'], {'data-test': re.compile(r'title|offer', re.I)})
+                        or item.find(['h2', 'h3'])
                         or item.find('a')
                     )
                     title = title_el.get_text(strip=True) if title_el else ''
@@ -110,7 +112,70 @@ class JobScraper:
         except Exception as e:
             logger.error(f"Error scraping pracuj.pl: {e}")
 
+        # Always include direct search link as a fallback result
+        jobs.append({
+            'title': f'Search "{keyword}" jobs on Pracuj.pl',
+            'url': url,
+            'source': 'pracuj.pl',
+            'note': 'Direct search link'
+        })
+
         logger.info(f"Found {len(jobs)} jobs on pracuj.pl")
+        return jobs
+
+    def scrape_jooble(self, keyword):
+        """Scrape jobs from pl.jooble.org using requests."""
+        jobs = []
+        search_url = f"https://pl.jooble.org/jobs-{quote(keyword)}"
+        logger.info(f"Scraping Jooble for keyword: {keyword}")
+
+        try:
+            page_source = self._fetch_with_requests(search_url)
+
+            soup = BeautifulSoup(page_source, 'lxml')
+
+            # Try multiple selectors for current Jooble structure
+            job_items = (
+                soup.find_all('article', {'data-id': True})
+                or soup.find_all('div', class_=re.compile(r'job[-_]card|vacancy[-_]item', re.I))
+                or soup.find_all('article', class_=re.compile(r'job|vacancy|result', re.I))
+                or soup.find_all('div', attrs={'data-test': re.compile(r'job|vacancy', re.I)})
+            )
+
+            for item in job_items[:10]:
+                try:
+                    title_el = (
+                        item.find(['h2', 'h3'], class_=re.compile(r'title|position', re.I))
+                        or item.find(['h2', 'h3'])
+                        or item.find('a')
+                    )
+                    title = title_el.get_text(strip=True) if title_el else ''
+
+                    link_el = item.find('a', href=True)
+                    link = link_el['href'] if link_el else ''
+                    if link and not link.startswith('http'):
+                        link = 'https://pl.jooble.org' + link
+
+                    if title and link:
+                        jobs.append({'title': title, 'url': link, 'source': 'Jooble'})
+                except Exception as e:
+                    logger.debug(f"Error parsing Jooble job item: {e}")
+                    continue
+
+            if not jobs:
+                logger.warning("No jobs found on Jooble - page structure may have changed")
+        except Exception as e:
+            logger.error(f"Error scraping Jooble: {e}")
+
+        # Always include direct search link as a fallback result
+        jobs.append({
+            'title': f'Search "{keyword}" jobs on Jooble',
+            'url': search_url,
+            'source': 'Jooble',
+            'note': 'Direct search link'
+        })
+
+        logger.info(f"Found {len(jobs)} jobs on Jooble")
         return jobs
 
     def scrape_linkedin(self, keyword):
@@ -173,11 +238,13 @@ class JobScraper:
 
         pracuj_jobs = self.scrape_pracuj_pl(keyword)
         linkedin_jobs = self.scrape_linkedin(keyword)
+        jooble_jobs = self.scrape_jooble(keyword)
 
-        total = len(pracuj_jobs) + len(linkedin_jobs)
+        total = len(pracuj_jobs) + len(linkedin_jobs) + len(jooble_jobs)
         result = {
             'pracuj_pl': pracuj_jobs,
             'linkedin': linkedin_jobs,
+            'jooble': jooble_jobs,
             'keyword': keyword,
             'total_results': total,
         }
