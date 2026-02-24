@@ -46,9 +46,6 @@ def retry_with_backoff(retries=3, backoff_factor=2, exceptions=(requests.Request
 
 
 class JobScraper:
-    def __init__(self):
-        self._driver = None
-
     def _get_headers(self):
         """Get request headers with a random user agent."""
         return {
@@ -60,75 +57,24 @@ class JobScraper:
             'Upgrade-Insecure-Requests': '1',
         }
 
-    def _get_selenium_driver(self):
-        """Create and return a Selenium WebDriver with headless Chrome."""
-        if self._driver is not None:
-            return self._driver
-        try:
-            from selenium import webdriver
-            from selenium.webdriver.chrome.options import Options
-            from selenium.webdriver.chrome.service import Service
-            from webdriver_manager.chrome import ChromeDriverManager
-
-            options = Options()
-            options.add_argument('--headless')
-            options.add_argument('--no-sandbox')
-            options.add_argument('--disable-dev-shm-usage')
-            options.add_argument('--disable-gpu')
-            options.add_argument(f'--user-agent={random.choice(USER_AGENTS)}')
-            options.add_argument('--window-size=1920,1080')
-            options.add_argument('--disable-blink-features=AutomationControlled')
-            options.add_experimental_option('excludeSwitches', ['enable-automation'])
-            options.add_experimental_option('useAutomationExtension', False)
-
-            service = Service(ChromeDriverManager().install())
-            driver = webdriver.Chrome(service=service, options=options)
-            driver.execute_script(
-                "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
-            )
-            self._driver = driver
-            return driver
-        except Exception as e:
-            logger.error(f"Failed to initialize Selenium WebDriver: {e}")
-            return None
-
-    def _close_driver(self):
-        """Close Selenium WebDriver if open."""
-        if self._driver is not None:
-            try:
-                self._driver.quit()
-            except Exception as e:
-                logger.debug(f"Error closing WebDriver: {e}")
-            self._driver = None
-
-    def _fetch_with_selenium(self, url, wait_time=3):
-        """Fetch page content using Selenium WebDriver (for JS-rendered pages)."""
-        driver = self._get_selenium_driver()
-        if driver is None:
-            raise RuntimeError("Selenium WebDriver is not available")
-        driver.get(url)
-        time.sleep(wait_time)
-        return driver.page_source
-
     @retry_with_backoff(retries=3, backoff_factor=2)
-    def _fetch_with_requests(self, url, timeout=15):
-        """Fetch page content using requests with retry logic."""
+    def _fetch_with_requests(self, url, timeout=10):
+        """Fetch page content using requests with retry logic.
+
+        timeout is set to 10 seconds to prevent hanging on cloud deployments.
+        """
         response = requests.get(url, headers=self._get_headers(), timeout=timeout)
         response.raise_for_status()
         return response.content
 
     def scrape_pracuj_pl(self, keyword):
-        """Scrape jobs from pracuj.pl using Selenium for JavaScript rendering."""
+        """Scrape jobs from pracuj.pl using requests."""
         jobs = []
         url = f"https://www.pracuj.pl/praca/{quote(keyword)};kw"
         logger.info(f"Scraping pracuj.pl for keyword: {keyword}")
 
         try:
-            try:
-                page_source = self._fetch_with_selenium(url, wait_time=5)
-            except Exception as selenium_err:
-                logger.warning(f"Selenium unavailable for pracuj.pl, falling back to requests: {selenium_err}")
-                page_source = self._fetch_with_requests(url)
+            page_source = self._fetch_with_requests(url)
 
             soup = BeautifulSoup(page_source, 'lxml')
 
@@ -225,11 +171,8 @@ class JobScraper:
         keyword = keyword.strip()
         logger.info(f"Starting job search for keyword: {keyword}")
 
-        try:
-            pracuj_jobs = self.scrape_pracuj_pl(keyword)
-            linkedin_jobs = self.scrape_linkedin(keyword)
-        finally:
-            self._close_driver()
+        pracuj_jobs = self.scrape_pracuj_pl(keyword)
+        linkedin_jobs = self.scrape_linkedin(keyword)
 
         total = len(pracuj_jobs) + len(linkedin_jobs)
         result = {

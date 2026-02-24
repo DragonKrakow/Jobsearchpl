@@ -5,5 +5,3 @@ flask
 flask-cors
 python-dotenv
 gunicorn
-selenium
-webdriver-manager
