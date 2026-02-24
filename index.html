@@ -262,6 +262,21 @@
                         html += '</div>';
                     }
                     
+                    // Jooble results
+                    if (data.jooble && data.jooble.length > 0) {
+                        html += '<div class="source-section">';
+                        html += '<div class="source-title">🔍 Jooble</div>';
+                        data.jooble.forEach(job => {
+                            html += `
+                                <div class="job-item">
+                                    <a href="${job.url}" target="_blank">${job.title}</a>
+                                    <div class="job-source">From: ${job.source}</div>
+                                </div>
+                            `;
+                        });
+                        html += '</div>';
+                    }
+                    
                     resultsDiv.innerHTML = html;
                 })
                 .catch(error => {
