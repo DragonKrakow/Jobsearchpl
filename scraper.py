@@ -6,6 +6,7 @@ import logging
 import time
 import random
 from functools import wraps
+from concurrent.futures import ThreadPoolExecutor
 
 logging.basicConfig(
     level=logging.INFO,
@@ -236,9 +237,26 @@ class JobScraper:
         keyword = keyword.strip()
         logger.info(f"Starting job search for keyword: {keyword}")
 
-        pracuj_jobs = self.scrape_pracuj_pl(keyword)
-        linkedin_jobs = self.scrape_linkedin(keyword)
-        jooble_jobs = self.scrape_jooble(keyword)
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            pracuj_future = executor.submit(self.scrape_pracuj_pl, keyword)
+            linkedin_future = executor.submit(self.scrape_linkedin, keyword)
+            jooble_future = executor.submit(self.scrape_jooble, keyword)
+
+            try:
+                pracuj_jobs = pracuj_future.result()
+            except Exception as e:
+                logger.error(f"Pracuj.pl scraper failed: {e}")
+                pracuj_jobs = []
+            try:
+                linkedin_jobs = linkedin_future.result()
+            except Exception as e:
+                logger.error(f"LinkedIn scraper failed: {e}")
+                linkedin_jobs = []
+            try:
+                jooble_jobs = jooble_future.result()
+            except Exception as e:
+                logger.error(f"Jooble scraper failed: {e}")
+                jooble_jobs = []
 
         total = len(pracuj_jobs) + len(linkedin_jobs) + len(jooble_jobs)
         result = {
