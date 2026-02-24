@@ -167,47 +167,6 @@ class JobScraper:
         logger.info(f"Found {len(jobs)} jobs on pracuj.pl")
         return jobs
 
-    def scrape_olx_pl(self, keyword):
-        """Scrape jobs from OLX.pl"""
-        jobs = []
-        url = f"https://www.olx.pl/praca/?q={quote(keyword)}"
-        logger.info(f"Scraping OLX.pl for keyword: {keyword}")
-
-        try:
-            content = self._fetch_with_requests(url)
-            soup = BeautifulSoup(content, 'lxml')
-
-            # Updated selectors for current OLX.pl structure
-            job_items = (
-                soup.find_all('div', {'data-cy': 'l-card'})
-                or soup.find_all('li', {'data-cy': 'offer'})
-                or soup.select('div[data-testid*="card"]')
-            )
-
-            for item in job_items[:10]:
-                try:
-                    title_el = item.find(['h6', 'h4', 'h3', 'strong'])
-                    title = title_el.get_text(strip=True) if title_el else ''
-
-                    link_el = item.find('a', href=True)
-                    link = link_el['href'] if link_el else ''
-                    if link and not link.startswith('http'):
-                        link = 'https://www.olx.pl' + link
-
-                    if title and link:
-                        jobs.append({'title': title, 'url': link, 'source': 'OLX.pl'})
-                except Exception as e:
-                    logger.debug(f"Error parsing OLX.pl job item: {e}")
-                    continue
-
-            if not jobs:
-                logger.warning("No jobs found on OLX.pl - page structure may have changed")
-        except Exception as e:
-            logger.error(f"Error scraping OLX.pl: {e}")
-
-        logger.info(f"Found {len(jobs)} jobs on OLX.pl")
-        return jobs
-
     def scrape_linkedin(self, keyword):
         """Scrape jobs from LinkedIn (public listings) with search link fallback."""
         jobs = []
@@ -268,15 +227,13 @@ class JobScraper:
 
         try:
             pracuj_jobs = self.scrape_pracuj_pl(keyword)
-            olx_jobs = self.scrape_olx_pl(keyword)
             linkedin_jobs = self.scrape_linkedin(keyword)
         finally:
             self._close_driver()
 
-        total = len(pracuj_jobs) + len(olx_jobs) + len(linkedin_jobs)
+        total = len(pracuj_jobs) + len(linkedin_jobs)
         result = {
             'pracuj_pl': pracuj_jobs,
-            'olx_pl': olx_jobs,
             'linkedin': linkedin_jobs,
             'keyword': keyword,
             'total_results': total,
